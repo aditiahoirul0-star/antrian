@@ -1,63 +1,57 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Antrian Online</title>
+  <title>Admin Antrian</title>
   <style>
     body {
-      font-family: Arial;
       text-align: center;
-      background: #111;
+      background: black;
       color: white;
+      font-family: Arial;
     }
-    input {
-      padding: 10px;
-      font-size: 18px;
-      margin: 5px;
-      width: 220px;
-      border-radius: 8px;
-      border: none;
+    .big {
+      font-size: 80px;
+      color: lime;
     }
+    h2 { color: yellow; }
+    h3 { color: cyan; }
     button {
-      font-size: 18px;
-      padding: 12px 25px;
+      font-size: 25px;
+      padding: 15px 30px;
       margin: 10px;
       border-radius: 10px;
       border: none;
-      background: #28a745;
-      color: white;
-    }
-    .big {
-      font-size: 60px;
-      color: #00ffcc;
-      margin: 10px;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
 
-<h1>Antrian Online</h1>
+<h1>ADMIN ANTRIAN</h1>
 
-<h2>Daftar Antrian</h2>
-<input type="text" id="nama" placeholder="Nama"><br>
-<input type="text" id="hp" placeholder="No HP"><br>
+<!-- LOGIN -->
+<div id="login">
+  <input type="password" id="pass" placeholder="Password"><br><br>
+  <button onclick="login()">Login</button>
+</div>
 
-<button onclick="daftar()">Daftar</button>
+<!-- PANEL -->
+<div id="panel" style="display:none;">
+  <div class="big" id="current">A000</div>
 
-<h2>Nomor Anda</h2>
-<div class="big" id="nomorSaya">-</div>
+  <h2 id="nama">-</h2>
+  <h3 id="hp">-</h3>
+  <h3 id="sisa">Sisa: -</h3>
 
-<h2>Sedang Dilayani</h2>
-<div class="big" id="current">0</div>
-
-<h2>Sisa Antrian</h2>
-<div class="big" id="sisa">-</div>
+  <button onclick="next()">Panggil</button>
+  <button onclick="reset()">Reset</button>
+</div>
 
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
 <script>
-// 🔑 CONFIG FIREBASE
 var firebaseConfig = {
   apiKey: "AIzaSyDiBMFzSL0AvP_DGuqFmdN-Oh3mrhJEnBw",
   authDomain: "antrian-app-aa93c.firebaseapp.com",
@@ -68,89 +62,85 @@ var firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 
-// 🔥 INIT DATA
-db.ref("antrian").once("value", function(snapshot) {
-  if (!snapshot.exists()) {
-    db.ref("antrian").set({
-      nomor: 0,
-      current: 0
-    });
+// 🔐 LOGIN
+function login() {
+  let pass = document.getElementById("pass").value;
+  if (pass === "1234") {
+    document.getElementById("login").style.display = "none";
+    document.getElementById("panel").style.display = "block";
+  } else {
+    alert("Password salah!");
   }
-});
-
-// ambil nomor dari local
-let nomorSaya = localStorage.getItem("nomorSaya");
-let sudahBunyi = false;
-
-if (nomorSaya) {
-  document.getElementById("nomorSaya").innerText =
-    "A" + String(nomorSaya).padStart(3, '0');
 }
 
-// 🔊 NOTIF H-1
-function bunyiNotif() {
-  let teks = "Nomor Anda sebentar lagi dipanggil";
+// 🎫 FORMAT NOMOR
+function formatNomor(n) {
+  return "A" + String(n).padStart(3, '0');
+}
+
+// 🔊 SUARA
+function suara(nomor) {
+  let teks = "Nomor antrian " + nomor + " silakan maju";
   let u = new SpeechSynthesisUtterance(teks);
   u.lang = "id-ID";
   speechSynthesis.speak(u);
 }
 
-// realtime update
-db.ref("antrian").on("value", function(snapshot) {
-  let data = snapshot.val() || {};
-  let current = data.current || 0;
+// 🔄 UPDATE DATA REALTIME
+db.ref("antrian").on("value", function(snap) {
+  let d = snap.val() || {};
+  let current = d.current || 0;
+  let nomor = d.nomor || 0;
 
-  document.getElementById("current").innerText =
-    "A" + String(current).padStart(3, '0');
+  // tampil nomor
+  document.getElementById("current").innerText = formatNomor(current);
 
-  if (nomorSaya) {
-    let sisa = nomorSaya - current;
-    if (sisa < 0) sisa = 0;
+  // ambil data user
+  db.ref("antrian/list/" + current).once("value", function(data) {
+    let user = data.val();
 
-    document.getElementById("sisa").innerText = sisa;
-
-    // 🔥 H-1 bunyi
-    if (sisa === 1 && !sudahBunyi) {
-      bunyiNotif();
-      sudahBunyi = true;
+    if (user) {
+      document.getElementById("nama").innerText = "Nama: " + user.nama;
+      document.getElementById("hp").innerText = "HP: " + user.hp;
+    } else {
+      document.getElementById("nama").innerText = "-";
+      document.getElementById("hp").innerText = "-";
     }
+  });
 
-    // reset agar bisa bunyi lagi kalau jauh
-    if (sisa > 1) {
-      sudahBunyi = false;
-    }
-  }
+  // 🔢 hitung sisa
+  let sisa = nomor - current;
+  if (sisa < 0) sisa = 0;
+
+  document.getElementById("sisa").innerText = "Sisa Antrian: " + sisa;
 });
 
-// daftar antrian
-function daftar() {
-  let nama = document.getElementById("nama").value;
-  let hp = document.getElementById("hp").value;
+// ▶️ NEXT
+function next() {
+  db.ref("antrian").once("value", function(snap) {
+    let d = snap.val() || {};
+    let current = d.current || 0;
+    let nomor = d.nomor || 0;
 
-  if (!nama || !hp) {
-    alert("Isi nama dan no HP!");
-    return;
-  }
+    if (current < nomor) {
+      current++;
+      db.ref("antrian").update({ current: current });
 
-  db.ref("antrian/nomor").once("value", function(snapshot) {
-    let nomor = snapshot.val() || 0;
-    nomor++;
-
-    db.ref("antrian").update({ nomor: nomor });
-
-    db.ref("antrian/list/" + nomor).set({
-      nama: nama,
-      hp: hp
-    });
-
-    localStorage.setItem("nomorSaya", nomor);
-    nomorSaya = nomor;
-
-    document.getElementById("nomorSaya").innerText =
-      "A" + String(nomor).padStart(3, '0');
-
-    alert("Nomor Anda: A" + String(nomor).padStart(3, '0'));
+      let formatted = formatNomor(current);
+      suara(formatted);
+    } else {
+      alert("Antrian habis!");
+    }
   });
+}
+
+// 🔄 RESET
+function reset() {
+  db.ref("antrian").set({
+    nomor: 0,
+    current: 0
+  });
+  alert("Antrian direset!");
 }
 </script>
 
