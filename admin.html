@@ -13,8 +13,12 @@
       font-size: 80px;
       color: lime;
     }
-    h2 { color: yellow; }
-    h3 { color: cyan; }
+    h2 {
+      color: yellow;
+    }
+    h3 {
+      color: cyan;
+    }
     button {
       font-size: 25px;
       padding: 15px 30px;
@@ -41,7 +45,6 @@
 
   <h2 id="nama">-</h2>
   <h3 id="hp">-</h3>
-  <h3 id="sisa">Sisa: -</h3>
 
   <button onclick="next()">Panggil</button>
   <button onclick="reset()">Reset</button>
@@ -86,17 +89,14 @@ function suara(nomor) {
   speechSynthesis.speak(u);
 }
 
-// 🔄 UPDATE DATA REALTIME
-db.ref("antrian").on("value", function(snap) {
-  let d = snap.val() || {};
-  let current = d.current || 0;
-  let nomor = d.nomor || 0;
+// 🔄 UPDATE CURRENT + DATA USER
+db.ref("antrian/current").on("value", function(snap) {
+  let val = snap.val() || 0;
 
-  // tampil nomor
-  document.getElementById("current").innerText = formatNomor(current);
+  document.getElementById("current").innerText = formatNomor(val);
 
   // ambil data user
-  db.ref("antrian/list/" + current).once("value", function(data) {
+  db.ref("antrian/list/" + val).once("value", function(data) {
     let user = data.val();
 
     if (user) {
@@ -107,12 +107,6 @@ db.ref("antrian").on("value", function(snap) {
       document.getElementById("hp").innerText = "-";
     }
   });
-
-  // 🔢 hitung sisa
-  let sisa = nomor - current;
-  if (sisa < 0) sisa = 0;
-
-  document.getElementById("sisa").innerText = "Sisa Antrian: " + sisa;
 });
 
 // ▶️ NEXT
