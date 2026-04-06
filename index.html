@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Antrian Online</title>
+  <style>
+    body {
+      font-family: Arial;
+      text-align: center;
+      background: #111;
+      color: white;
+    }
+    input {
+      padding: 10px;
+      font-size: 18px;
+      margin: 5px;
+      width: 220px;
+      border-radius: 8px;
+      border: none;
+    }
+    button {
+      font-size: 18px;
+      padding: 12px 25px;
+      margin: 10px;
+      border-radius: 10px;
+      border: none;
+      background: #28a745;
+      color: white;
+    }
+    .big {
+      font-size: 60px;
+      color: #00ffcc;
+      margin: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Antrian Online</h1>
+
+<h2>Daftar Antrian</h2>
+<input type="text" id="nama" placeholder="Nama"><br>
+<input type="text" id="hp" placeholder="No HP"><br>
+
+<button onclick="daftar()">Daftar</button>
+
+<h2>Nomor Anda</h2>
+<div class="big" id="nomorSaya">-</div>
+
+<h2>Sedang Dilayani</h2>
+<div class="big" id="current">0</div>
+
+<h2>Sisa Antrian</h2>
+<div class="big" id="sisa">-</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+<script>
+// 🔑 CONFIG FIREBASE (SUDAH PUNYA KAMU)
+var firebaseConfig = {
+  apiKey: "AIzaSyDiBMFzSL0AvP_DGuqFmdN-Oh3mrhJEnBw",
+  authDomain: "antrian-app-aa93c.firebaseapp.com",
+  databaseURL: "https://antrian-app-aa93c-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "antrian-app-aa93c"
+};
+
+firebase.initializeApp(firebaseConfig);
+var db = firebase.database();
+
+// 🔥 INIT DATA (BIAR TIDAK ERROR)
+db.ref("antrian").once("value", function(snapshot) {
+  if (!snapshot.exists()) {
+    db.ref("antrian").set({
+      nomor: 0,
+      current: 0
+    });
+  }
+});
+
+// ambil nomor saya dari local
+let nomorSaya = localStorage.getItem("nomorSaya");
+if (nomorSaya) {
+  document.getElementById("nomorSaya").innerText = nomorSaya;
+}
+
+// realtime update
+db.ref("antrian").on("value", function(snapshot) {
+  let data = snapshot.val() || {};
+  let current = data.current || 0;
+
+  document.getElementById("current").innerText = current;
+
+  if (nomorSaya) {
+    let sisa = nomorSaya - current;
+    if (sisa < 0) sisa = 0;
+    document.getElementById("sisa").innerText = sisa;
+  }
+});
+
+// daftar antrian
+function daftar() {
+  let nama = document.getElementById("nama").value;
+  let hp = document.getElementById("hp").value;
+
+  if (!nama || !hp) {
+    alert("Isi nama dan no HP!");
+    return;
+  }
+
+  db.ref("antrian/nomor").once("value", function(snapshot) {
+    let nomor = snapshot.val() || 0;
+    nomor++;
+
+    db.ref("antrian").update({ nomor: nomor });
+
+    db.ref("antrian/list/" + nomor).set({
+      nama: nama,
+      hp: hp
+    });
+
+    localStorage.setItem("nomorSaya", nomor);
+    nomorSaya = nomor;
+
+    document.getElementById("nomorSaya").innerText = nomor;
+
+    alert("Nomor Anda: " + nomor);
+  });
+}
+</script>
+
+</body>
+</html>

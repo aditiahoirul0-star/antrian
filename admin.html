@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admin Antrian</title>
+  <style>
+    body {
+      font-family: Arial;
+      text-align: center;
+      background: black;
+      color: white;
+    }
+    button {
+      font-size: 25px;
+      padding: 20px 40px;
+      margin: 20px;
+      border-radius: 10px;
+      border: none;
+      background: orange;
+      color: black;
+    }
+    .big {
+      font-size: 80px;
+      color: lime;
+    }
+  </style>
+</head>
+<body>
+
+<h1>ADMIN ANTRIAN</h1>
+
+<div class="big" id="current">0</div>
+
+<button onclick="next()">Panggil Berikutnya</button>
+<button onclick="reset()">Reset</button>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+<script>
+var firebaseConfig = {
+  apiKey: "AIzaSyDiBMFzSL0AvP_DGuqFmdN-Oh3mrhJEnBw",
+  authDomain: "antrian-app-aa93c.firebaseapp.com",
+  databaseURL: "https://antrian-app-aa93c-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "antrian-app-aa93c"
+};
+
+firebase.initializeApp(firebaseConfig);
+var db = firebase.database();
+
+// tampilkan current
+db.ref("antrian/current").on("value", function(snapshot) {
+  document.getElementById("current").innerText = snapshot.val() || 0;
+});
+
+// tombol next
+function next() {
+  db.ref("antrian").once("value", function(snapshot) {
+    let data = snapshot.val() || {};
+    let current = data.current || 0;
+    let nomor = data.nomor || 0;
+
+    if (current < nomor) {
+      current++;
+      db.ref("antrian").update({ current: current });
+    } else {
+      alert("Antrian habis!");
+    }
+  });
+}
+
+// reset
+function reset() {
+  db.ref("antrian").set({
+    nomor: 0,
+    current: 0
+  });
+  alert("Antrian direset!");
+}
+</script>
+
+</body>
+</html>
