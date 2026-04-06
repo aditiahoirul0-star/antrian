@@ -13,12 +13,8 @@
       font-size: 80px;
       color: lime;
     }
-    h2 {
-      color: yellow;
-    }
-    h3 {
-      color: cyan;
-    }
+    h2 { color: yellow; }
+    h3 { color: cyan; }
     button {
       font-size: 25px;
       padding: 15px 30px;
@@ -26,6 +22,16 @@
       border-radius: 10px;
       border: none;
       cursor: pointer;
+    }
+    #list {
+      margin-top: 20px;
+      font-size: 18px;
+    }
+    .item {
+      padding: 5px;
+    }
+    .active {
+      background: green;
     }
   </style>
 </head>
@@ -45,9 +51,13 @@
 
   <h2 id="nama">-</h2>
   <h3 id="hp">-</h3>
+  <h3 id="sisa">Sisa: -</h3>
 
   <button onclick="next()">Panggil</button>
   <button onclick="reset()">Reset</button>
+
+  <h2>Daftar Antrian</h2>
+  <div id="list"></div>
 </div>
 
 <!-- Firebase -->
@@ -89,14 +99,16 @@ function suara(nomor) {
   speechSynthesis.speak(u);
 }
 
-// 🔄 UPDATE CURRENT + DATA USER
-db.ref("antrian/current").on("value", function(snap) {
-  let val = snap.val() || 0;
+// 🔄 UPDATE REALTIME (CURRENT + SISA)
+db.ref("antrian").on("value", function(snap) {
+  let d = snap.val() || {};
+  let current = d.current || 0;
+  let nomor = d.nomor || 0;
 
-  document.getElementById("current").innerText = formatNomor(val);
+  document.getElementById("current").innerText = formatNomor(current);
 
-  // ambil data user
-  db.ref("antrian/list/" + val).once("value", function(data) {
+  // data user
+  db.ref("antrian/list/" + current).once("value", function(data) {
     let user = data.val();
 
     if (user) {
@@ -107,6 +119,35 @@ db.ref("antrian/current").on("value", function(snap) {
       document.getElementById("hp").innerText = "-";
     }
   });
+
+  // sisa
+  let sisa = nomor - current;
+  if (sisa < 0) sisa = 0;
+
+  document.getElementById("sisa").innerText = "Sisa Antrian: " + sisa;
+});
+
+// 📋 LIST ANTRIAN
+db.ref("antrian/list").on("value", function(snapshot) {
+  let data = snapshot.val() || {};
+  let html = "";
+
+  for (let key in data) {
+    let user = data[key];
+
+    let isActive = "";
+    db.ref("antrian/current").once("value", function(cSnap) {
+      if (key == cSnap.val()) {
+        isActive = "active";
+      }
+    });
+
+    html += "<div class='item " + isActive + "'>";
+    html += formatNomor(key) + " - " + user.nama + " - " + user.hp;
+    html += "</div>";
+  }
+
+  document.getElementById("list").innerHTML = html;
 });
 
 // ▶️ NEXT
@@ -120,8 +161,7 @@ function next() {
       current++;
       db.ref("antrian").update({ current: current });
 
-      let formatted = formatNomor(current);
-      suara(formatted);
+      suara(formatNomor(current));
     } else {
       alert("Antrian habis!");
     }
