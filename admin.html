@@ -13,25 +13,19 @@
       font-size: 80px;
       color: lime;
     }
-    h2 { color: yellow; }
-    h3 { color: cyan; }
+    h2 {
+      color: yellow;
+    }
+    h3 {
+      color: cyan;
+    }
     button {
-      font-size: 25px;
-      padding: 15px 30px;
+      font-size: 20px;
+      padding: 15px 25px;
       margin: 10px;
       border-radius: 10px;
       border: none;
       cursor: pointer;
-    }
-    #list {
-      margin-top: 20px;
-      font-size: 18px;
-    }
-    .item {
-      padding: 5px;
-    }
-    .active {
-      background: green;
     }
   </style>
 </head>
@@ -51,13 +45,12 @@
 
   <h2 id="nama">-</h2>
   <h3 id="hp">-</h3>
-  <h3 id="sisa">Sisa: -</h3>
+
+  <h3>Sisa Antrian: <span id="sisa">0</span></h3>
 
   <button onclick="next()">Panggil</button>
+  <button onclick="ulang()">Panggil Ulang</button>
   <button onclick="reset()">Reset</button>
-
-  <h2>Daftar Antrian</h2>
-  <div id="list"></div>
 </div>
 
 <!-- Firebase -->
@@ -75,6 +68,7 @@ var firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 
+
 // 🔐 LOGIN
 function login() {
   let pass = document.getElementById("pass").value;
@@ -86,10 +80,12 @@ function login() {
   }
 }
 
+
 // 🎫 FORMAT NOMOR
 function formatNomor(n) {
   return "A" + String(n).padStart(3, '0');
 }
+
 
 // 🔊 SUARA
 function suara(nomor) {
@@ -99,17 +95,23 @@ function suara(nomor) {
   speechSynthesis.speak(u);
 }
 
-// 🔄 UPDATE REALTIME (CURRENT + SISA)
+
+// 🔄 UPDATE DATA REALTIME
 db.ref("antrian").on("value", function(snap) {
-  let d = snap.val() || {};
-  let current = d.current || 0;
-  let nomor = d.nomor || 0;
+  let data = snap.val() || {};
+  let current = data.current || 0;
+  let nomor = data.nomor || 0;
 
   document.getElementById("current").innerText = formatNomor(current);
 
-  // data user
-  db.ref("antrian/list/" + current).once("value", function(data) {
-    let user = data.val();
+  // sisa antrian
+  let sisa = nomor - current;
+  if (sisa < 0) sisa = 0;
+  document.getElementById("sisa").innerText = sisa;
+
+  // ambil data user
+  db.ref("antrian/list/" + current).once("value", function(d) {
+    let user = d.val();
 
     if (user) {
       document.getElementById("nama").innerText = "Nama: " + user.nama;
@@ -119,36 +121,8 @@ db.ref("antrian").on("value", function(snap) {
       document.getElementById("hp").innerText = "-";
     }
   });
-
-  // sisa
-  let sisa = nomor - current;
-  if (sisa < 0) sisa = 0;
-
-  document.getElementById("sisa").innerText = "Sisa Antrian: " + sisa;
 });
 
-// 📋 LIST ANTRIAN
-db.ref("antrian/list").on("value", function(snapshot) {
-  let data = snapshot.val() || {};
-  let html = "";
-
-  for (let key in data) {
-    let user = data[key];
-
-    let isActive = "";
-    db.ref("antrian/current").once("value", function(cSnap) {
-      if (key == cSnap.val()) {
-        isActive = "active";
-      }
-    });
-
-    html += "<div class='item " + isActive + "'>";
-    html += formatNomor(key) + " - " + user.nama + " - " + user.hp;
-    html += "</div>";
-  }
-
-  document.getElementById("list").innerHTML = html;
-});
 
 // ▶️ NEXT
 function next() {
@@ -161,12 +135,36 @@ function next() {
       current++;
       db.ref("antrian").update({ current: current });
 
-      suara(formatNomor(current));
+      let formatted = formatNomor(current);
+
+      // suara 2x biar jelas 🔥
+      suara(formatted);
+      setTimeout(() => suara(formatted), 3000);
+
     } else {
       alert("Antrian habis!");
     }
   });
 }
+
+
+// 🔁 PANGGIL ULANG
+function ulang() {
+  db.ref("antrian/current").once("value", function(snap) {
+    let current = snap.val() || 0;
+
+    if (current > 0) {
+      let formatted = formatNomor(current);
+
+      suara(formatted);
+      setTimeout(() => suara(formatted), 3000);
+
+    } else {
+      alert("Belum ada antrian!");
+    }
+  });
+}
+
 
 // 🔄 RESET
 function reset() {
@@ -176,6 +174,7 @@ function reset() {
   });
   alert("Antrian direset!");
 }
+
 </script>
 
 </body>
