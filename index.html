@@ -69,14 +69,11 @@ var firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 
-// ambil nomor dari local
 let nomorSaya = localStorage.getItem("nomorSaya");
 
+// tampilkan nomor jika ada
 if (nomorSaya) {
   document.getElementById("nomorSaya").innerText = nomorSaya;
-  document.getElementById("status").innerText = "Status: Anda sudah terdaftar";
-} else {
-  document.getElementById("status").innerText = "Status: Belum daftar";
 }
 
 // realtime update
@@ -88,22 +85,46 @@ db.ref("antrian").on("value", function(snapshot) {
   document.getElementById("current").innerText = current;
 
   let sisa = 0;
+  let statusText = "";
 
   if (nomorSaya) {
-    // ✅ sudah daftar
-    sisa = nomorSaya - current;
+
+    nomorSaya = parseInt(nomorSaya);
+
+    // 🔥 STATUS LOGIC
+    if (current > nomorSaya) {
+      statusText = "Status: Antrian Anda sudah selesai";
+
+      // 🔥 AUTO RESET BIAR BISA DAFTAR LAGI
+      localStorage.removeItem("nomorSaya");
+      nomorSaya = null;
+
+      document.getElementById("nomorSaya").innerText = "-";
+
+    } else if (current == nomorSaya) {
+      statusText = "Status: Anda sedang dipanggil";
+      sisa = 0;
+
+    } else {
+      statusText = "Status: Menunggu antrian";
+      sisa = nomorSaya - current;
+    }
+
   } else {
-    // ✅ belum daftar
+    // belum daftar
+    statusText = "Status: Belum daftar";
     sisa = nomor - current;
   }
 
   if (sisa < 0) sisa = 0;
 
   document.getElementById("sisa").innerText = sisa;
+  document.getElementById("status").innerText = statusText;
+
 });
 
 
-// daftar antrian
+// daftar
 function daftar() {
   let nama = document.getElementById("nama").value;
   let hp = document.getElementById("hp").value;
@@ -128,7 +149,6 @@ function daftar() {
     nomorSaya = nomor;
 
     document.getElementById("nomorSaya").innerText = nomor;
-    document.getElementById("status").innerText = "Status: Anda sudah terdaftar";
 
     alert("Nomor Anda: " + nomor);
   });
