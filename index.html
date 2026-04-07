@@ -9,33 +9,35 @@
       background: #111;
       color: white;
     }
+
     input {
       padding: 10px;
       font-size: 18px;
       margin: 5px;
-      width: 220px;
-      border-radius: 8px;
-      border: none;
+      width: 200px;
     }
+
     button {
       font-size: 18px;
-      padding: 12px 25px;
+      padding: 12px 20px;
       margin: 10px;
       border-radius: 10px;
       border: none;
       background: #28a745;
       color: white;
     }
+
     .big {
-      font-size: 60px;
+      font-size: 50px;
       color: #00ffcc;
-      margin: 10px;
     }
   </style>
 </head>
 <body>
 
 <h1>Antrian Online</h1>
+
+<p id="status">Status: -</p>
 
 <h2>Daftar Antrian</h2>
 <input type="text" id="nama" placeholder="Nama"><br>
@@ -57,7 +59,6 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
 <script>
-// 🔑 CONFIG FIREBASE (SUDAH PUNYA KAMU)
 var firebaseConfig = {
   apiKey: "AIzaSyDiBMFzSL0AvP_DGuqFmdN-Oh3mrhJEnBw",
   authDomain: "antrian-app-aa93c.firebaseapp.com",
@@ -68,35 +69,39 @@ var firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 
-// 🔥 INIT DATA (BIAR TIDAK ERROR)
-db.ref("antrian").once("value", function(snapshot) {
-  if (!snapshot.exists()) {
-    db.ref("antrian").set({
-      nomor: 0,
-      current: 0
-    });
-  }
-});
-
-// ambil nomor saya dari local
+// ambil nomor dari local
 let nomorSaya = localStorage.getItem("nomorSaya");
+
 if (nomorSaya) {
   document.getElementById("nomorSaya").innerText = nomorSaya;
+  document.getElementById("status").innerText = "Status: Anda sudah terdaftar";
+} else {
+  document.getElementById("status").innerText = "Status: Belum daftar";
 }
 
 // realtime update
 db.ref("antrian").on("value", function(snapshot) {
   let data = snapshot.val() || {};
   let current = data.current || 0;
+  let nomor = data.nomor || 0;
 
   document.getElementById("current").innerText = current;
 
+  let sisa = 0;
+
   if (nomorSaya) {
-    let sisa = nomorSaya - current;
-    if (sisa < 0) sisa = 0;
-    document.getElementById("sisa").innerText = sisa;
+    // ✅ sudah daftar
+    sisa = nomorSaya - current;
+  } else {
+    // ✅ belum daftar
+    sisa = nomor - current;
   }
+
+  if (sisa < 0) sisa = 0;
+
+  document.getElementById("sisa").innerText = sisa;
 });
+
 
 // daftar antrian
 function daftar() {
@@ -123,6 +128,7 @@ function daftar() {
     nomorSaya = nomor;
 
     document.getElementById("nomorSaya").innerText = nomor;
+    document.getElementById("status").innerText = "Status: Anda sudah terdaftar";
 
     alert("Nomor Anda: " + nomor);
   });
